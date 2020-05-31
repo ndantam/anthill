@@ -1,0 +1,10 @@
+Concurrency Abstractions in Common Lisp
+
+
+Abstractions
+===========
+
+- Thread Pool
+- PMAP
+- CSP
+- Futures and Promises

@@ -1,10 +1,15 @@
 Concurrency Abstractions in Common Lisp
 
+WiP
 
 Abstractions
-===========
+============
 
-- Thread Pool
-- PMAP
-- CSP
-- Futures and Promises
+- Parallel Cognates
+  - PMAP
+  - PDOLIST
+
+- TODO
+  - Thread Pools
+  - CSP
+  - Futures and Promises

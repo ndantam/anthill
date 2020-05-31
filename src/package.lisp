@@ -1,3 +1,3 @@
 (defpackage anthill
   (:use :cl :alexandria)
-  (:export))
+  (:export :pmap :pdolist))

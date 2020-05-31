@@ -1,4 +1,3 @@
-;;;; Copyright (c) 2013, Georgia Tech Research Corporation
 ;;;; Copyright (c) 2015, Rice University
 ;;;; Copyright (c) 2020, Colorado School of Mines
 ;;;;
@@ -36,28 +35,46 @@
 ;;;;   ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 ;;;;   POSSIBILITY OF SUCH DAMAGE.
 
-
 (in-package :anthill)
 
-(defparameter *thread-count* 8)
+(declaim (ftype (function ((or (eql list)
+                               (eql vector)
+                               null)
+                           (function (t) t)
+                           sequence)
+                          sequence)
+                pmap))
 
-(defun pgen (generator)
-  (let* ((mutex (sb-thread:make-mutex))
-         (condition))
-    (labels ((try-thunk (thunk)
-               (unless condition
-                 (handler-case (funcall thunk)
-                   (error (c)
-                     (setq condition c)
-                     nil))))
-             (thread-function ()
-               (loop
-                  for work-unit = (sb-thread:with-mutex (mutex)
-                                    (try-thunk generator))
-                  while work-unit
-                  do (try-thunk work-unit))))
-      (let ((threads (loop for i below *thread-count*
-                        collect (sb-thread:make-thread #'thread-function))))
-        (map nil #'sb-thread:join-thread threads)
-        (when condition
-          (error condition))))))
+(defun pmap (result-type function sequence)
+  (let* ((n (length sequence))
+         (result (when result-type (make-array n :initial-element nil)))
+         (i 0)
+         (next (etypecase sequence
+                 (list (let ((list sequence))
+                         (lambda ()
+                           (prog1 (car list)
+                             (setq list (cdr list))))))
+                 (vector (lambda () (aref sequence i))))))
+    (pgen (lambda ()
+            (when (< i n)
+              (let ((j i)
+                    (x (funcall next)))
+                (incf i)
+                (lambda ()
+                  (let ((y  (funcall function x)))
+                    (when result
+                      (setf (aref result j) y))))))))
+    (if (eq 'list result-type)
+        (loop for i across result
+           collect i)
+        result)))
+
+(defmacro pdolist ((var list &optional result) &body  body)
+  (with-gensyms (slist)
+    `(let ((,slist ,list))
+       (pgen (lambda ()
+               (when ,slist
+                 (let ((,var (car ,slist)))
+                   (setq ,slist (cdr ,slist))
+                   (lambda () ,@body)))))
+       ,result)))

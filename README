@@ -6,8 +6,9 @@ Abstractions
 ============
 
 - Parallel Cognates
-  - PMAP
+  - PDO / PDO*
   - PDOLIST
+  - PMAP
 
 - TODO
   - Thread Pools

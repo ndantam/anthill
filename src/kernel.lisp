@@ -199,7 +199,7 @@
 ;; - this thread helps until its results are finished
 ;; -
 
-(defun pgen (generator)
+(defun %pgen-pool (generator)
   (let ((thread-pool *thread-pool*)
         (mutex (sb-thread:make-mutex))
         (waitqueue (sb-thread:make-waitqueue))
@@ -243,26 +243,31 @@
     (values)))
 
 
-;; (defun pgen (generator)
-;;   (let* ((mutex (sb-thread:make-mutex))
-;;          (condition))
-;;     (labels ((try-thunk (thunk)
-;;                (unless condition
-;;                  (handler-case (funcall thunk)
-;;                    (error (c)
-;;                      (setq condition c)
-;;                      nil))))
-;;              (thread-function ()
-;;                (loop
-;;                   for work-unit = (sb-thread:with-mutex (mutex)
-;;                                     (try-thunk generator))
-;;                   while work-unit
-;;                   do (try-thunk work-unit))))
-;;       (let ((threads (loop for i below *thread-count*
-;;                         collect (sb-thread:make-thread #'thread-function))))
-;;         (map nil #'sb-thread:join-thread threads)
-;;         (when condition
-;;           (error condition))))))
+(defun %pgen-spawn (generator)
+  (let* ((mutex (sb-thread:make-mutex))
+         (condition))
+    (labels ((try-thunk (thunk)
+               (unless condition
+                 (handler-case (funcall thunk)
+                   (error (c)
+                     (setq condition c)
+                     nil))))
+             (thread-function ()
+               (loop
+                  for work-unit = (sb-thread:with-mutex (mutex)
+                                    (try-thunk generator))
+                  while work-unit
+                  do (try-thunk work-unit))))
+      (let ((threads (loop for i below *thread-count*
+                        collect (sb-thread:make-thread #'thread-function))))
+        (map nil #'sb-thread:join-thread threads)
+        (when condition
+          (error condition))))))
+
+(defun pgen (generator)
+  (if *thread-pool*
+      (%pgen-pool generator)
+      (%pgen-spawn generator)))
 
 
 
